@@ -13,148 +13,134 @@ app.use(bodyParser.json());
 const PROGRESS_FILE = "progress.json";
 
 const readProgress = () => {
-    if (fs.existsSync(PROGRESS_FILE)) {
-        return JSON.parse(fs.readFileSync(PROGRESS_FILE, "utf-8"));
+    try {
+        if (fs.existsSync(PROGRESS_FILE)) {
+            return JSON.parse(fs.readFileSync(PROGRESS_FILE, "utf-8"));
+        }
+    } catch (error) {
+        console.error("Error reading progress file:", error);
+        return {};
     }
     return {};
 };
 
 const writeProgress = (data) => {
-    fs.writeFileSync(PROGRESS_FILE, JSON.stringify(data, null, 2));
-};
-
-const cleanupOldProgress = () => {
-    const progress = readProgress();
-    const now = Date.now();
-
-    for (const playerId in progress) {
-        const lastUpdated = progress[playerId].lastUpdated || 0;
-        const threeYears = 3 * 365 * 24 * 60 * 60 * 1000;
-
-        if (now - lastUpdated > threeYears) {
-            delete progress[playerId];
+    fs.writeFile(PROGRESS_FILE, JSON.stringify(data, null, 2), (err) => {
+        if (err) {
+            console.error("Error writing progress file:", err);
         }
-    }
-
-    writeProgress(progress);
+    });
 };
-// hi!
-app.post("/register", async (req, res) => {
-    const { playerId, password } = req.body;
 
-    if (!playerId || !password) {
-        return res.status(400).json({
-            success: false,
-            message: "Player ID and password are required.",
-        });
+const ensureGameAndLoginExist = (progress, gameId, login) => {
+    if (!progress[gameId]) {
+        progress[gameId] = {};
+    }
+    if (!progress[gameId][login]) {
+        progress[gameId][login] = {
+            login,
+            password: "",
+            mail: "",
+            database: {},
+            lastUpdated: Date.now(),
+        };
+    }
+};
+
+// Реєстрація нового користувача
+app.post("/register", async (req, res) => {
+    const { gameId, login, password, mail } = req.body;
+
+    if (!gameId || !login || !password || !mail) {
+        return res.status(400).json({ success: false, message: "All fields are required." });
     }
 
     const progress = readProgress();
-
-    if (progress[playerId]) {
-        return res
-            .status(400)
-            .json({ success: false, message: "Player ID already exists." });
+    if (progress[gameId] && progress[gameId][login]) {
+        return res.status(400).json({ success: false, message: "Login already exists in this game." });
     }
 
+    // Хешування пароля
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    progress[playerId] = {
+    if (!progress[gameId]) {
+        progress[gameId] = {};
+    }
+
+    progress[gameId][login] = {
+        login,
         password: hashedPassword,
-        data: {},
+        mail,
+        database: {},
         lastUpdated: Date.now(),
     };
 
     writeProgress(progress);
-
     res.json({ success: true, message: "Registration successful!" });
 });
 
+// Вхід користувача
 app.post("/login", async (req, res) => {
-    const { playerId, password } = req.body;
+    const { gameId, login, password } = req.body;
 
-    if (!playerId || !password) {
-        return res.status(400).json({
-            success: false,
-            message: "Player ID and password are required.",
-        });
+    if (!gameId || !login || !password) {
+        return res.status(400).json({ success: false, message: "All fields are required." });
     }
 
     const progress = readProgress();
-
-    if (!progress[playerId]) {
-        return res
-            .status(404)
-            .json({ success: false, message: "Player ID not found." });
+    if (!progress[gameId] || !progress[gameId][login]) {
+        return res.status(404).json({ success: false, message: "Login not found." });
     }
 
-    const isMatch = await bcrypt.compare(password, progress[playerId].password);
-
+    const isMatch = await bcrypt.compare(password, progress[gameId][login].password);
     if (!isMatch) {
-        return res
-            .status(403)
-            .json({ success: false, message: "Invalid password." });
+        return res.status(403).json({ success: false, message: "Invalid password." });
     }
 
     res.json({ success: true, message: "Login successful!" });
 });
 
-app.get("/progress/:playerId", async (req, res) => {
-    const playerId = req.params.playerId;
-    const { password } = req.body; // Отримуємо пароль із тіла запиту
+// Отримання прогресу
+app.post("/progress/:gameId/:login", async (req, res) => {
+    const { gameId, login } = req.params;
+    const { password } = req.body;
 
     const progress = readProgress();
-
-    if (!progress[playerId]) {
-        return res
-            .status(404)
-            .json({ success: false, message: "Player ID not found." });
+    if (!progress[gameId] || !progress[gameId][login]) {
+        return res.status(404).json({ success: false, message: "Login not found." });
     }
 
-    const isMatch = await bcrypt.compare(password, progress[playerId].password);
+    const isMatch = await bcrypt.compare(password, progress[gameId][login].password);
     if (!isMatch) {
-        return res
-            .status(403)
-            .json({ success: false, message: "Invalid password." });
+        return res.status(403).json({ success: false, message: "Invalid password." });
     }
 
-    res.json(progress[playerId].data || {});
+    res.json(progress[gameId][login].database || {});
 });
 
-app.post("/progress/:playerId", async (req, res) => {
-    const playerId = req.params.playerId;
+// Збереження прогресу
+app.put("/progress/:gameId/:login", async (req, res) => {
+    const { gameId, login } = req.params;
     const { password, data } = req.body;
 
     const progress = readProgress();
-
-    if (!progress[playerId]) {
-        return res
-            .status(404)
-            .json({ success: false, message: "Player ID not found." });
+    if (!progress[gameId] || !progress[gameId][login]) {
+        return res.status(404).json({ success: false, message: "Login not found." });
     }
 
-    const isMatch = await bcrypt.compare(password, progress[playerId].password);
+    const isMatch = await bcrypt.compare(password, progress[gameId][login].password);
     if (!isMatch) {
-        return res
-            .status(403)
-            .json({ success: false, message: "Invalid password." });
+        return res.status(403).json({ success: false, message: "Invalid password." });
     }
 
-    progress[playerId].data = data;
-    progress[playerId].lastUpdated = Date.now();
+    progress[gameId][login].database = data;
+    progress[gameId][login].lastUpdated = Date.now();
 
     writeProgress(progress);
-
     res.json({ success: true, message: "Progress saved!" });
 });
 
-setInterval(cleanupOldProgress, 24 * 60 * 60 * 1000);
-
-app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({ success: false, message: "Internal server error" });
-});
-
+// Запуск сервера
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });

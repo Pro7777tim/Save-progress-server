@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Progress</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+
+        .form-container {
+            margin-bottom: 20px;
+        }
+
+        input, textarea {
+            margin: 5px;
+            padding: 10px;
+            width: 200px;
+        }
+
+        button {
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+
+        .message {
+            margin-top: 20px;
+        }
+
+        .progress-data {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="form-container">
+        <h3>Register</h3>
+        <input type="text" id="registerGameId" placeholder="Game ID"><br>
+        <input type="text" id="registerLogin" placeholder="Login"><br>
+        <input type="password" id="registerPassword" placeholder="Password"><br>
+        <input type="email" id="registerMail" placeholder="Email"><br>
+        <button onclick="registerUser()">Register</button>
+    </div>
+
+    <div class="form-container">
+        <h3>Login</h3>
+        <input type="text" id="loginGameId" placeholder="Game ID"><br>
+        <input type="text" id="loginLogin" placeholder="Login"><br>
+        <input type="password" id="loginPassword" placeholder="Password"><br>
+        <button onclick="loginUser()">Login</button>
+    </div>
+
+    <div class="form-container">
+        <h3>Save Progress</h3>
+        <input type="text" id="progressGameId" placeholder="Game ID"><br>
+        <input type="text" id="progressLogin" placeholder="Login"><br>
+        <input type="password" id="progressPassword" placeholder="Password"><br>
+        <textarea id="progressData" placeholder="Progress Data"></textarea><br>
+        <button onclick="saveProgress()">Save Progress</button>
+    </div>
+
+    <div class="form-container">
+        <h3>View Progress</h3>
+        <input type="text" id="viewProgressGameId" placeholder="Game ID"><br>
+        <input type="text" id="viewProgressLogin" placeholder="Login"><br>
+        <input type="password" id="viewProgressPassword" placeholder="Password"><br>
+        <button onclick="viewProgress()">View Progress</button>
+        <div class="progress-data" id="progressDataDisplay"></div>
+    </div>
+
+    <div class="message" id="message"></div>
+
+    <script>
+        const apiUrl = 'http://localhost:3000'; // Change this if your API is hosted elsewhere
+
+        async function registerUser() {
+            const gameId = document.getElementById('registerGameId').value;
+            const login = document.getElementById('registerLogin').value;
+            const password = document.getElementById('registerPassword').value;
+            const mail = document.getElementById('registerMail').value;
+
+            if (!gameId || !login || !password || !mail) {
+                showMessage('Please fill all fields.', 'error');
+                return;
+            }
+
+            console.log('Sending registration data...', { gameId, login, password, mail });
+
+            const response = await fetch(`${apiUrl}/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ gameId, login, password, mail })
+            });
+
+            const result = await response.json();
+            console.log('Registration response:', result);
+
+            if (result.success) {
+                showMessage(result.message, 'success');
+            } else {
+                showMessage(result.message, 'error');
+            }
+        }
+
+        async function loginUser() {
+            const gameId = document.getElementById('loginGameId').value;
+            const login = document.getElementById('loginLogin').value;
+            const password = document.getElementById('loginPassword').value;
+
+            if (!gameId || !login || !password) {
+                showMessage('Please fill all fields.', 'error');
+                return;
+            }
+
+            console.log('Sending login data...', { gameId, login, password });
+
+            const response = await fetch(`${apiUrl}/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ gameId, login, password })
+            });
+
+            const result = await response.json();
+            console.log('Login response:', result);
+
+            if (result.success) {
+                showMessage(result.message, 'success');
+            } else {
+                showMessage(result.message, 'error');
+            }
+        }
+
+        async function saveProgress() {
+            const gameId = document.getElementById('progressGameId').value;
+            const login = document.getElementById('progressLogin').value;
+            const password = document.getElementById('progressPassword').value;
+            const data = document.getElementById('progressData').value;
+
+            if (!gameId || !login || !password || !data) {
+                showMessage('Please fill all fields.', 'error');
+                return;
+            }
+
+            console.log('Sending progress data...', { gameId, login, password, data });
+
+            const response = await fetch(`${apiUrl}/progress/${gameId}/${login}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password, data })
+            });
+
+            const result = await response.json();
+            console.log('Progress save response:', result);
+
+            if (result.success) {
+                showMessage(result.message, 'success');
+            } else {
+                showMessage(result.message, 'error');
+            }
+        }
+
+        async function viewProgress() {
+            const gameId = document.getElementById('viewProgressGameId').value;
+            const login = document.getElementById('viewProgressLogin').value;
+            const password = document.getElementById('viewProgressPassword').value;
+
+            if (!gameId || !login || !password) {
+                showMessage('Please fill all fields.', 'error');
+                return;
+            }
+
+            console.log('Fetching progress data...', { gameId, login, password });
+
+            const response = await fetch(`${apiUrl}/progress/${gameId}/${login}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password })
+            });
+
+            const result = await response.json();
+            console.log('Progress data:', result);
+
+            if (result.success) {
+                displayProgressData(result.message, 'success');
+            } else {
+                displayProgressData(result.message, 'error');
+            }
+        }
+
+        function showMessage(message, type) {
+            const messageElement = document.getElementById('message');
+            messageElement.textContent = message;
+            messageElement.style.color = type === 'success' ? 'green' : 'red';
+        }
+
+        function displayProgressData(data, type) {
+            const progressDisplay = document.getElementById('progressDataDisplay');
+            if (type === 'success') {
+                progressDisplay.textContent = JSON.stringify(data, null, 2);
+                progressDisplay.style.color = 'green';
+            } else {
+                progressDisplay.textContent = data;
+                progressDisplay.style.color = 'red';
+            }
+        }
+    </script>
+</body>
+</html>
