@@ -38,7 +38,7 @@ const cleanupOldProgress = () => {
 
     writeProgress(progress);
 };
-
+// hi!
 app.post("/register", async (req, res) => {
     const { playerId, password } = req.body;
 
