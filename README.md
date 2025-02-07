@@ -1,9 +1,13 @@
 # Save progress server
 ## About the server
-This js server is designed to store progress for games.
-Uses npm, node and other libraries.
-Has a reliable system for storing data, logins and encrypted passwords.
-Stores data in progress.json. To run, run:
+This js server is designed to store progress for games or other applications.
+Uses npm, runs on node, and requires some libraries.
+Has a reliable system for storing data, logins, and encrypted passwords for various applications.
+Gives the correct answer in any requests.
+Stores data in progress.json, which has the structure: games - logins - data - progress.
+Login can contain name, password, email (optional), progress, and last entry.
+### Starting the server
+To run, run:
 ```
 npm install
 npm start
@@ -23,7 +27,7 @@ async function registerUser(gameId, login, password, email) {
     });
 
     const data = await response.json();
-    alert(data.message);
+    return data;
 }
 
 async function loginUser(gameId, login, password) {
@@ -36,7 +40,7 @@ async function loginUser(gameId, login, password) {
     });
 
     const data = await response.json();
-    alert(data.message);
+    return data;
 }
 
 async function getProgress(gameId, login, password) {
@@ -49,8 +53,7 @@ async function getProgress(gameId, login, password) {
     });
 
     const data = await response.json();
-    console.log(data);
-    alert('Progress loaded in console');
+    return data;
 }
 
 async function saveProgress(gameId, login, password, data) {
@@ -63,7 +66,14 @@ async function saveProgress(gameId, login, password, data) {
     });
 
     const result = await response.json();
-    alert(result.message);
+    return result;
 }
+```
+### Example of use
+```
+registerUser('game1', 'user1', 'password123', 'user1@example.com');
+loginUser('game1', 'user1', 'password123');
+getProgress('game1', 'user1', 'password123');
+saveProgress('game1', 'user1', 'password123', { score: 100, level: 5 });
 
 ```
