@@ -32,45 +32,46 @@ const writeProgress = (data) => {
     });
 };
 
-const ensureGameAndLoginExist = (progress, gameId, login) => {
-    if (!progress[gameId]) {
-        progress[gameId] = {};
-    }
-    if (!progress[gameId][login]) {
-        progress[gameId][login] = {
-            login,
-            password: "",
-            mail: "",
-            database: {},
-            lastUpdated: Date.now(),
-        };
-    }
-};
-
-// Реєстрація нового користувача
 app.post("/register", async (req, res) => {
     const { gameId, login, password, mail } = req.body;
 
-    if (!gameId || !login || !password || !mail) {
-        return res.status(400).json({ success: false, message: "All fields are required." });
+    if (!gameId || !login || !password) {
+        return res
+            .status(400)
+            .json({ success: false, message: "All fields are required." });
     }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedMail = await bcrypt.hash(mail, 10);
+    const hashedLogin = await bcrypt.hash(login, 10);
 
     const progress = readProgress();
-    if (progress[gameId] && progress[gameId][login]) {
-        return res.status(400).json({ success: false, message: "Login already exists in this game." });
+    let found = false;
+    if (progress[gameId]) {
+        for (const element of Object.values(progress[gameId])) {
+            const isMatch = await bcrypt.compare(login, element.login);
+            if (isMatch) {
+                found = true;
+                break;
+            }
+        }
     }
 
-    // Хешування пароля
-    const hashedPassword = await bcrypt.hash(password, 10);
+    if (found) {
+        return res.status(400).json({
+            success: false,
+            message: "Login already exists in this game.",
+        });
+    }
 
     if (!progress[gameId]) {
         progress[gameId] = {};
     }
 
-    progress[gameId][login] = {
-        login,
+    progress[gameId][hashedLogin] = {
+        login: hashedLogin,
         password: hashedPassword,
-        mail,
+        mail: hashedMail,
         database: {},
         lastUpdated: Date.now(),
     };
@@ -79,68 +80,115 @@ app.post("/register", async (req, res) => {
     res.json({ success: true, message: "Registration successful!" });
 });
 
-// Вхід користувача
 app.post("/login", async (req, res) => {
     const { gameId, login, password } = req.body;
+    const hashedLogin = await bcrypt.hash(login, 10);
 
     if (!gameId || !login || !password) {
-        return res.status(400).json({ success: false, message: "All fields are required." });
+        return res
+            .status(400)
+            .json({ success: false, message: "All fields are required." });
     }
 
     const progress = readProgress();
-    if (!progress[gameId] || !progress[gameId][login]) {
-        return res.status(404).json({ success: false, message: "Login not found." });
+    let found = false;
+    let thisElement;
+    if (progress[gameId]) {
+        for (const element of Object.values(progress[gameId])) {
+            const isMatch = await bcrypt.compare(login, element.login);
+            if (isMatch) {
+                found = true;
+                thisElement = element;
+                break;
+            }
+        }
+    }
+    if (!progress[gameId] || !found) {
+        return res
+            .status(404)
+            .json({ success: false, message: "Login not found." });
     }
 
-    const isMatch = await bcrypt.compare(password, progress[gameId][login].password);
+    const isMatch = await bcrypt.compare(password, thisElement.password);
     if (!isMatch) {
-        return res.status(403).json({ success: false, message: "Invalid password." });
+        return res
+            .status(403)
+            .json({ success: false, message: "Invalid password." });
     }
 
     res.json({ success: true, message: "Login successful!" });
 });
 
-// Отримання прогресу
 app.post("/progress/:gameId/:login", async (req, res) => {
     const { gameId, login } = req.params;
     const { password } = req.body;
 
     const progress = readProgress();
-    if (!progress[gameId] || !progress[gameId][login]) {
-        return res.status(404).json({ success: false, message: "Login not found." });
+    let found = false;
+    let thisElement;
+    if (progress[gameId]) {
+        for (const element of Object.values(progress[gameId])) {
+            const isMatch = await bcrypt.compare(login, element.login);
+            if (isMatch) {
+                found = true;
+                thisElement = element;
+                break;
+            }
+        }
+    }
+    if (!progress[gameId] || !found) {
+        return res
+            .status(404)
+            .json({ success: false, message: "Login not found." });
     }
 
-    const isMatch = await bcrypt.compare(password, progress[gameId][login].password);
+    const isMatch = await bcrypt.compare(password, thisElement.password);
     if (!isMatch) {
-        return res.status(403).json({ success: false, message: "Invalid password." });
+        return res
+            .status(403)
+            .json({ success: false, message: "Invalid password." });
     }
 
-    res.json(progress[gameId][login].database || {});
+    res.json(thisElement.database || {});
 });
 
-// Збереження прогресу
 app.put("/progress/:gameId/:login", async (req, res) => {
     const { gameId, login } = req.params;
     const { password, data } = req.body;
 
     const progress = readProgress();
-    if (!progress[gameId] || !progress[gameId][login]) {
-        return res.status(404).json({ success: false, message: "Login not found." });
+    let found = false;
+    let thisElement;
+    if (progress[gameId]) {
+        for (const element of Object.values(progress[gameId])) {
+            const isMatch = await bcrypt.compare(login, element.login);
+            if (isMatch) {
+                found = true;
+                thisElement = element;
+                break;
+            }
+        }
+    }
+    if (!progress[gameId] || !found) {
+        return res
+            .status(404)
+            .json({ success: false, message: "Login not found." });
     }
 
-    const isMatch = await bcrypt.compare(password, progress[gameId][login].password);
+    const isMatch = await bcrypt.compare(password, thisElement.password);
     if (!isMatch) {
-        return res.status(403).json({ success: false, message: "Invalid password." });
+        return res
+            .status(403)
+            .json({ success: false, message: "Invalid password." });
     }
 
-    progress[gameId][login].database = data;
-    progress[gameId][login].lastUpdated = Date.now();
+    thisElement.database = data;
+    thisElement.lastUpdated = Date.now();
 
     writeProgress(progress);
     res.json({ success: true, message: "Progress saved!" });
 });
 
-// Запуск сервера
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });

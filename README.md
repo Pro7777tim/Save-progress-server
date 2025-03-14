@@ -2,7 +2,7 @@
 ## About the server
 This js server is designed to store progress for games or other applications.
 Uses npm, runs on node, and requires some libraries.
-Has a reliable system for storing data, logins, and encrypted passwords for various applications.
+Has a reliable system for storing data, encrypted passwords, logins and email for various applications.
 Gives the correct answer in any requests.
 Stores data in progress.json, which has the structure: games - logins - data - progress.
 Login can contain name, password, email (optional), progress, and last entry.
