@@ -7,6 +7,7 @@ Gives the correct answer in any requests.
 Stores data in progress.json, which has the structure: games - logins - data - progress.
 Login can contain name, password, email (optional), progress, and last entry.
 ### Starting the server
+Please replace the variables in the process.env file for the server to work correctly.
 To run, run:
 ```
 npm install
