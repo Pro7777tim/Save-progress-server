@@ -104,6 +104,31 @@
             <div class="progress-data" id="progressDataDisplay"></div>
         </div>
 
+        <div class="form-container">
+            <h3>Inform Me</h3>
+            <input type="text" id="informGameId" placeholder="Game ID" /><br />
+            <input type="text" id="informLogin" placeholder="Login" /><br />
+            <input type="email" id="informMail" placeholder="Email" /><br />
+            <button onclick="sendEmail()">Inform Me</button>
+        </div>
+
+        <div class="form-container">
+            <h3>Recover Account</h3>
+            <input type="text" id="recoverGameId" placeholder="Game ID" /><br />
+            <input type="text" id="recoverLogin" placeholder="Login" /><br />
+            <input
+                type="password"
+                id="recoverNewPassword"
+                placeholder="New password"
+            /><br />
+            <input
+                type="password"
+                id="recoverCode"
+                placeholder="Recover Code"
+            /><br />
+            <button onclick="restoreAcc()">Recover Account</button>
+        </div>
+
         <div class="message" id="message"></div>
 
         <script>
@@ -250,6 +275,83 @@
                     displayProgressData(result.message, "success");
                 } else {
                     displayProgressData(result.message, "error");
+                }
+            }
+
+            async function restoreAcc() {
+                const gameId = document.getElementById("recoverGameId").value;
+                const login = document.getElementById("recoverLogin").value;
+                const password =
+                    document.getElementById("recoverNewPassword").value;
+                const code = document.getElementById("recoverCode").value;
+
+                if (!gameId || !login || !password || !code) {
+                    showMessage("Please fill all fields.", "error");
+                    return;
+                }
+
+                console.log("Fetching restore data...", {
+                    gameId,
+                    login,
+                    password,
+                    code,
+                });
+
+                const response = await fetch(
+                    `${apiUrl}/restore/${gameId}/${login}`,
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({ newPassword: password, code }),
+                    }
+                );
+
+                const result = await response.json();
+                console.log("Recover account response:", result);
+
+                if (result.success) {
+                    showMessage(result.message, "success");
+                } else {
+                    showMessage(result.message, "error");
+                }
+            }
+
+            async function sendEmail() {
+                const gameId = document.getElementById("informGameId").value;
+                const login = document.getElementById("informLogin").value;
+                const mail = document.getElementById("informMail").value;
+
+                if (!gameId || !login || !mail) {
+                    showMessage("Please fill all fields.", "error");
+                    return;
+                }
+
+                console.log("Fetching inform data...", {
+                    gameId,
+                    login,
+                    mail,
+                });
+
+                const response = await fetch(
+                    `${apiUrl}/inform/${gameId}/${login}`,
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({ mail }),
+                    }
+                );
+
+                const result = await response.json();
+                console.log("Inform player response:", result);
+
+                if (result.success) {
+                    showMessage(result.message, "success");
+                } else {
+                    showMessage(result.message, "error");
                 }
             }
 

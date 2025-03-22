@@ -35,8 +35,8 @@ const transporter = nodemailer.createTransport({
     port: "examplePort",
     secure: "exampleSecure",
     auth: {
-        user: process.env.email.toString(),
-        pass: process.env.emailpas.toString(),
+        user: EMAIL,
+        pass: EMAILPAS,
     },
 });
 
@@ -268,7 +268,13 @@ app.post("/progress/:gameId/:login", async (req, res) => {
 app.post("/restore/:gameId/:login", async (req, res) => {
     try {
         const { gameId, login } = req.params;
-        const { newPassword, code } = req.body;
+        const body = req.body;
+
+        if (!gameId || !login || !body.newPassword || !body.code) {
+            return res
+                .status(400)
+                .json({ success: false, message: "All fields are required." });
+        }
 
         const progress = readProgress();
         let found = false;
@@ -294,19 +300,21 @@ app.post("/restore/:gameId/:login", async (req, res) => {
                 .json({ success: false, message: "Attempts exhausted." });
         } else {
             thisElement.attempts--;
+            writeProgress(progress);
         }
 
-        const isMatch = await bcrypt.compare(code, thisElement.code);
+        const isMatch = await bcrypt.compare(body.code, thisElement.code);
         if (!isMatch) {
             return res
                 .status(403)
                 .json({ success: false, message: "Invalid code." });
         }
 
-        thisElement.password = await bcrypt.hash(newPassword, 10);
+        thisElement.password = await bcrypt.hash(body.newPassword, 10);
         writeProgress(progress);
         return res.json({ success: true, message: "Account restored." });
     } catch (error) {
+        console.log(error);
         return res.status(400).json({
             success: false,
             message: "The server could not process the request.",
@@ -318,6 +326,12 @@ app.post("/inform/:gameId/:login", async (req, res) => {
     try {
         const { gameId, login } = req.params;
         const thisEmail = req.body;
+
+        if (!gameId || !login || !thisEmail.mail) {
+            return res
+                .status(400)
+                .json({ success: false, message: "All fields are required." });
+        }
 
         const progress = readProgress();
         let found = false;
@@ -340,9 +354,6 @@ app.post("/inform/:gameId/:login", async (req, res) => {
 
         const email = decrypt(thisElement.mail, KEY);
         const isMatch = thisEmail.mail == email;
-        console.log(email);
-        console.log(thisEmail);
-        console.log(isMatch);
         if (!isMatch) {
             return res
                 .status(403)

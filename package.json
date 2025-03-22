@@ -1,7 +1,7 @@
 {
     "name": "Game_server",
     "version": "0.1.0",
-    "description": "Simple node.js server for game Life Genocide",
+    "description": "Simple node.js server for games",
     "keywords": [
         "Life Genocide",
         "Server"
